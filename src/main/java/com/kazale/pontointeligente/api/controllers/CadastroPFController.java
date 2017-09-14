@@ -2,6 +2,7 @@ package com.kazale.pontointeligente.api.controllers;
 
 import java.math.BigDecimal;
 import java.security.NoSuchAlgorithmException;
+
 import java.util.Optional;
 
 import javax.validation.Valid;
@@ -9,16 +10,20 @@ import javax.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kazale.pontointeligente.api.dtos.CadastroPFDto;
+import com.kazale.pontointeligente.api.dtos.FuncionarioDto;
 import com.kazale.pontointeligente.api.entities.Empresa;
 import com.kazale.pontointeligente.api.entities.Funcionario;
 import com.kazale.pontointeligente.api.enums.PerfilEnum;
@@ -28,7 +33,7 @@ import com.kazale.pontointeligente.api.services.FuncionarioService;
 import com.kazale.pontointeligente.api.utils.PasswordUtils;
 
 @RestController
-@RequestMapping("/api/cadastrar-pf")
+@RequestMapping("/api")
 @CrossOrigin(origins = "*")
 public class CadastroPFController {
 private static final Logger log = LoggerFactory.getLogger(CadastroPFController.class);
@@ -50,7 +55,7 @@ private static final Logger log = LoggerFactory.getLogger(CadastroPFController.c
 	 * @return ResponseEntity<Response<CadastroPFDto>>
 	 * @throws NoSuchAlgorithmException
 	 */
-	@PostMapping
+	@PostMapping("/cadastrar-pf")
 	public ResponseEntity<Response<CadastroPFDto>> cadastrar(@Valid @RequestBody CadastroPFDto cadastroPFDto,
 			BindingResult result) throws NoSuchAlgorithmException {
 		log.info("Cadastrando PF: {}", cadastroPFDto.toString());
@@ -72,7 +77,47 @@ private static final Logger log = LoggerFactory.getLogger(CadastroPFController.c
 		response.setData(this.converterCadastroPFDto(funcionario));
 		return ResponseEntity.ok(response);
 	}
+	
+	
+	
+	/**
+	 * busca o funcionário pelo cpf
+	 * @param cpf
+	 * @return
+	 */
+	@GetMapping("/buscaPorCpf/{cpf}")
+	public ResponseEntity<Response<FuncionarioDto>> buscarPorCpf(@PathVariable String cpf){
+		log.info("Buscando empresa por Cpf: {}", cpf);
+		
+		Response<FuncionarioDto> response = new Response<FuncionarioDto>();
+		Optional<Funcionario> funcionario = funcionarioService.buscarPorCpf(cpf);
+		
+		if(!funcionario.isPresent()) {
+			log.info("Funcionário não encontrado para o cpf {}" , cpf);
+			response.getErrors().add("Funcionário não encontrado para o cpf {}" + cpf);
+			return ResponseEntity.badRequest().body(response);
+		}
+		
+		response.setData(this.converterFunDto(funcionario.get()));
+		return ResponseEntity.ok(response);
 
+	}
+	
+	
+	/**
+	 * Converte os dados do DTO para funcionári
+	 * @param funcionario
+	 * @return funcionarioDto
+	 */
+	private FuncionarioDto converterFunDto(Funcionario funcionario) {
+		FuncionarioDto funcionarioDto = new FuncionarioDto();
+		funcionarioDto.setNome(funcionario.getNome());
+		funcionarioDto.setEmail(funcionario.getEmail());
+		return funcionarioDto;
+	}
+
+	
+	
 	/**
 	 * Verifica se a empresa está cadastrada e se o funcionário não existe na base de dados.
 	 * 
@@ -91,7 +136,7 @@ private static final Logger log = LoggerFactory.getLogger(CadastroPFController.c
 		this.funcionarioService.buscarPorEmail(cadastroPFDto.getEmail())
 			.ifPresent(func -> result.addError(new ObjectError("funcionario", "Email já existente.")));
 	}
-
+	
 	/**
 	 * Converte os dados do DTO para funcionário.
 	 * 
